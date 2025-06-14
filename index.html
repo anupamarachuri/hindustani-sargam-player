@@ -57,20 +57,26 @@
     let sampler;
     let metronome;
 
-    function createSampler(instrument) {
+    async function createSampler(instrument) {
       if (sampler) sampler.dispose();
-      const toneInstruments = {
-        piano: new Tone.Synth({ oscillator: { type: "triangle" } }).toDestination(),
-        violin: new Tone.Synth({ oscillator: { type: "sawtooth" } }).toDestination(),
-        guitar: new Tone.Synth({ oscillator: { type: "square" } }).toDestination()
-      };
-      sampler = toneInstruments[instrument] || toneInstruments.piano;
+
+      if (instrument === 'piano') {
+        sampler = new Tone.Sampler({
+          urls: { C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3", G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3" },
+          baseUrl: "https://tonejs.github.io/audio/salamander/",
+        }).toDestination();
+      } else {
+        const oscillatorType = instrument === 'violin' ? 'sawtooth' : 'square';
+        sampler = new Tone.Synth({ oscillator: { type: oscillatorType } }).toDestination();
+      }
+
+      await Tone.loaded();
     }
 
-    function changeInstrumentAndPlay() {
+    async function changeInstrumentAndPlay() {
       const instrument = document.getElementById('instrumentSelect').value;
-      createSampler(instrument);
-      setTimeout(playSargam, 300); // Automatically play after changing instrument
+      await createSampler(instrument);
+      setTimeout(playSargam, 300);
     }
 
     changeInstrumentAndPlay();
@@ -90,17 +96,27 @@
       }
       metronome = new Tone.MembraneSynth().toDestination();
 
+      Tone.Transport.cancel();
+      Tone.Transport.bpm.value = bpm;
+
       for (let i = 0; i < sargam.length; i++) {
-        const time = `+${i * beatDuration}`;
         const toneNote = noteMap[sargam[i]];
-        if (toneNote) sampler.triggerAttackRelease(toneNote, beatDuration * 0.9, time);
-        Tone.Transport.scheduleOnce(() => {
-          metronome.triggerAttackRelease("C2", "8n");
-          document.getElementById('lyricsDisplay').textContent = lyrics[i] || '';
-        }, i * beatDuration);
+        const currentTime = i * beatDuration;
+
+        if (toneNote) {
+          Tone.Transport.schedule(time => {
+            sampler.triggerAttackRelease(toneNote, beatDuration * 0.9, time);
+          }, currentTime);
+        }
+
+        Tone.Transport.schedule(time => {
+          metronome.triggerAttackRelease("C2", "8n", time);
+          setTimeout(() => {
+            document.getElementById('lyricsDisplay').textContent = lyrics[i] || '';
+          }, 0);
+        }, currentTime);
       }
 
-      Tone.Transport.bpm.value = bpm;
       Tone.Transport.start();
     }
   </script>
