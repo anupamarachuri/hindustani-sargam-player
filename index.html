@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Hindustani Sargam Player</title>
-  <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.min.js"></script>
+  <script src="http://unpkg.com/tone"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
     textarea, select, input, button { width: 100%; font-size: 1em; margin-top: 10px; }
@@ -22,6 +22,13 @@
     <option value="Bhairav">Bhairav</option>
   </select>
 
+  <label for="instrumentSelect">Instrument:</label>
+  <select id="instrumentSelect" onchange="changeInstrumentAndPlay()">
+    <option value="piano">🎹 Piano</option>
+    <option value="violin">🎻 Violin</option>
+    <option value="guitar">🎸 Guitar</option>
+  </select>
+
   <textarea id="sargamInput" rows="4" placeholder="Enter Sargam: e.g. Sa Re Ga Ma Pa Dha Ni Sa'"></textarea>
   <textarea id="lyricsInput" rows="4" placeholder="Enter Lyrics: e.g. mohe rang do laal"></textarea>
 
@@ -37,10 +44,8 @@
     <canvas id="vfCanvas" width="700" height="200"></canvas>
   </div>
 
-  <audio id="tanpura" src="https://cdn.jsdelivr.net/gh/anuragsoni108/tanpura-sounds@main/tanpura-C.mp3" loop></audio>
-  <audio id="click" src="https://cdn.jsdelivr.net/gh/joshwcomeau/assets/audio/metronome/click.mp3"></audio>
+  <audio id="click" src="click.mp3"></audio>
 
-  
   <script>
     const noteMap = {
       'Sa.': 'C3', 'Re(k).': 'C#3', 'Re.': 'D3', 'Ga(k).': 'D#3', 'Ga.': 'E3', 'Ma.': 'F3', 'Ma(t).': 'F#3',
@@ -51,15 +56,35 @@
       "Pa'": 'G5', "Dha(k)'": 'G#5', "Dha'": 'A5', "Ni(k)'": 'A#5', "Ni'": 'B5', "Sa''": 'C6'
     };
 
-    const sampler = new Tone.Sampler({
-      urls: {
-        C3: "C3.mp3", D3: "D3.mp3", E3: "E3.mp3", F3: "F3.mp3", G3: "G3.mp3",
-        A3: "A3.mp3", B3: "B3.mp3", C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3",
-        G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3", C5: "C5.mp3", D5: "D5.mp3", E5: "E5.mp3"
-      },
-      release: 1,
-      baseUrl: "https://tonejs.github.io/audio/salamander/"
-    }).toDestination();
+    let sampler;
+
+    function createSampler(instrument) {
+      if (sampler) sampler.dispose();
+      let baseUrl, urls;
+      if (instrument === 'violin') {
+        baseUrl = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/violin/';
+        urls = { C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3", G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3", C5: "C5.mp3" };
+      } else if (instrument === 'guitar') {
+        baseUrl = 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/acoustic_guitar_nylon/';
+        urls = { C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3", G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3", C5: "C5.mp3" };
+      } else {
+        baseUrl = 'https://tonejs.github.io/audio/salamander/';
+        urls = {
+          C3: "C3.mp3", D3: "D3.mp3", E3: "E3.mp3", F3: "F3.mp3", G3: "G3.mp3", A3: "A3.mp3", B3: "B3.mp3",
+          C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3", G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3",
+          C5: "C5.mp3", D5: "D5.mp3", E5: "E5.mp3"
+        };
+      }
+      sampler = new Tone.Sampler({ urls, release: 1, baseUrl }).toDestination();
+    }
+
+    function changeInstrumentAndPlay() {
+      const instrument = document.getElementById('instrumentSelect').value;
+      createSampler(instrument);
+      setTimeout(playSargam, 500); // Automatically play after changing instrument
+    }
+
+    changeInstrumentAndPlay(); // Initialize and play on load
 
     async function playSargam() {
       await Tone.start();
@@ -71,10 +96,6 @@
       document.getElementById('lyricsDisplay').textContent = '';
       document.getElementById('indian').textContent = sargam.join(' ');
 
-      const tanpura = document.getElementById('tanpura');
-      tanpura.volume = 0.3;
-      tanpura.play();
-
       sargam.forEach((note, i) => {
         const time = `+${i * beatDuration}`;
         const toneNote = noteMap[note];
@@ -83,8 +104,6 @@
           document.getElementById('lyricsDisplay').textContent = lyrics[i] || '';
         }, i * beatDuration * 1000);
       });
-
-      setTimeout(() => tanpura.pause(), sargam.length * beatDuration * 1000);
     }
   </script>
 </body>
