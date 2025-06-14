@@ -1,26 +1,11 @@
-const raagas = {
-  Yaman: { aro: ['Ni','Re','Ga','Ma(t)','Dha'], ava: ['Ni','Dha','Ma(t)','Ga','Re'], tanpura: 'c_drone.mp3' },
-  Bhupali: { aro: ['Sa','Re','Ga','Pa','Dha'], ava: ['Sa','Dha','Pa','Ga','Re'] , tanpura: 'c_drone.mp3'},
-  // ... add more
-};
+// main.js - Logic for Hindustani Sargam Player
 
 const noteMap = {
- 'Sa.':48,'Re(k).':49,'Re.':50, 'Ga(k).':51,'Ga.':52,'Ma.':53,'Ma(t).':54,'Pa.':55,'Dha(k).':56,'Dha.':57,'Ni(k).':58,'Ni.':59,
- 'Sa':60,'Re(k)':61,'Re':62,'Ga(k)':63,'Ga':64,'Ma':65,'Ma(t)':66,'Pa':67,'Dha(k)':68,'Dha':69,'Ni(k)':70,'Ni':71,
- 'Sa\'':72,'Re(k)\'':73,'Re\'':74,'Ga(k)\'':75,'Ga\'':76,'Ma\'':77,'Ma(t)\'':78,'Pa\'':79,'Dha(k)\'':80,'Dha\'':81,'Ni(k)\'':82,'Ni\'':83,
- 'Sa\'\'':84 // etc.
+  'Sa.': 48, 'Re(k).': 49, 'Re.': 50, 'Ga(k).': 51, 'Ga.': 52, 'Ma.': 53, 'Ma(t).': 54, 'Pa.': 55, 'Dha(k).': 56, 'Dha.': 57, 'Ni(k).': 58, 'Ni.': 59,
+  'Sa': 60, 'Re(k)': 61, 'Re': 62, 'Ga(k)': 63, 'Ga': 64, 'Ma': 65, 'Ma(t)': 66, 'Pa': 67, 'Dha(k)': 68, 'Dha': 69, 'Ni(k)': 70, 'Ni': 71,
+  "Sa'": 72, "Re(k)'": 73, "Re'": 74, "Ga(k)'": 75, "Ga'": 76, "Ma'": 77, "Ma(t)'": 78, "Pa'": 79, "Dha(k)'": 80, "Dha'": 81, "Ni(k)'": 82, "Ni'": 83,
+  "Sa''": 84
 };
-
-function init() {
-  const sel = document.getElementById('raagSelect');
-  for (let name in raagas) {
-    let o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    sel.appendChild(o);
-  }
-  drawNotation();
-}
-window.onload = init;
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -29,6 +14,7 @@ function play() {
   const bpm = parseInt(document.getElementById('tempo').value);
   const beatDuration = 60 / bpm;
   const tokens = sargamText.trim().split(/\s+/);
+  document.getElementById('indian').textContent = sargamText;
 
   const tanpura = document.getElementById('tanpura');
   const click = document.getElementById('click');
@@ -43,15 +29,13 @@ function play() {
       const freq = 440 * Math.pow(2, (midi - 69) / 12);
       scheduleNote(freq, currentTime);
     }
-
-    // Metronome click every beat
+    // Metronome
     click.currentTime = 0;
     click.play();
-
     currentTime += beatDuration;
   });
 
-  // Stop tanpura after playback (optional)
+  // Stop tanpura after playback
   setTimeout(() => tanpura.pause(), tokens.length * beatDuration * 1000);
 }
 
@@ -66,8 +50,17 @@ function scheduleNote(freq, time) {
   osc.stop(time + 0.45);
 }
 
-function drawNotation() {
-  const input = document.getElementById('sargamInput').value;
-  document.getElementById('indian').textContent = input;
-  // Use VexFlow to render western staff in #vfCanvas
+function initRaagaDropdown() {
+  const raagas = {
+    Yaman: ['Ni', 'Re', 'Ga', 'Ma(t)', 'Dha', "Ni'"],
+    Bhupali: ['Sa', 'Re', 'Ga', 'Pa', 'Dha', "Sa'"],
+    Bhairav: ['Sa', 'Re(k)', 'Ga', 'Ma', 'Pa', 'Dha(k)', 'Ni', "Sa'"]
+  };
+  const select = document.getElementById('raagSelect');
+  for (const r in raagas) {
+    const option = document.createElement('option');
+    option.value = r;
+    option.text = r;
+    select.appendChild(option);
+  }
 }
