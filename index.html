@@ -46,55 +46,59 @@
 
   <audio id="click" src="click.mp3"></audio>
 
-  <script>
-    const noteMap = {
-      'Sa.': 'C3', 'Re(k).': 'C#3', 'Re.': 'D3', 'Ga(k).': 'D#3', 'Ga.': 'E3', 'Ma.': 'F3', 'Ma(t).': 'F#3',
-      'Pa.': 'G3', 'Dha(k).': 'G#3', 'Dha.': 'A3', 'Ni(k).': 'A#3', 'Ni.': 'B3',
-      'Sa': 'C4', 'Re(k)': 'C#4', 'Re': 'D4', 'Ga(k)': 'D#4', 'Ga': 'E4', 'Ma': 'F4', 'Ma(t)': 'F#4',
-      'Pa': 'G4', 'Dha(k)': 'G#4', 'Dha': 'A4', 'Ni(k)': 'A#4', 'Ni': 'B4',
-      "Sa'": 'C5', "Re(k)'": 'C#5', "Re'": 'D5', "Ga(k)'": 'D#5', "Ga'": 'E5', "Ma'": 'F5', "Ma(t)'": 'F#5',
-      "Pa'": 'G5', "Dha(k)'": 'G#5', "Dha'": 'A5', "Ni(k)'": 'A#5', "Ni'": 'B5', "Sa''": 'C6'
+ <script>
+window.onload = () => {
+  const noteMap = {
+    'Sa.': 'C3', 'Re(k).': 'C#3', 'Re.': 'D3', 'Ga(k).': 'D#3', 'Ga.': 'E3', 'Ma.': 'F3', 'Ma(t).': 'F#3',
+    'Pa.': 'G3', 'Dha(k).': 'G#3', 'Dha.': 'A3', 'Ni(k).': 'A#3', 'Ni.': 'B3',
+    'Sa': 'C4', 'Re(k)': 'C#4', 'Re': 'D4', 'Ga(k)': 'D#4', 'Ga': 'E4', 'Ma': 'F4', 'Ma(t)': 'F#4',
+    'Pa': 'G4', 'Dha(k)': 'G#4', 'Dha': 'A4', 'Ni(k)': 'A#4', 'Ni': 'B4',
+    "Sa'": 'C5', "Re(k)'": 'C#5', "Re'": 'D5', "Ga(k)'": 'D#5', "Ga'": 'E5', "Ma'": 'F5', "Ma(t)'": 'F#5',
+    "Pa'": 'G5', "Dha(k)'": 'G#5', "Dha'": 'A5', "Ni(k)'": 'A#5', "Ni'": 'B5', "Sa''": 'C6'
+  };
+
+  let sampler;
+
+  function createSampler(instrument) {
+    if (sampler) sampler.dispose();
+    const toneInstruments = {
+      piano: new Tone.Synth({ oscillator: { type: "triangle" } }).toDestination(),
+      violin: new Tone.Synth({ oscillator: { type: "sawtooth" } }).toDestination(),
+      guitar: new Tone.Synth({ oscillator: { type: "square" } }).toDestination()
     };
+    sampler = toneInstruments[instrument] || toneInstruments.piano;
+  }
 
-    let sampler;
+  function changeInstrumentAndPlay() {
+    const instrument = document.getElementById('instrumentSelect').value;
+    createSampler(instrument);
+    setTimeout(playSargam, 300);
+  }
 
-    function createSampler(instrument) {
-      if (sampler) sampler.dispose();
-      const toneInstruments = {
-        piano: new Tone.Synth({ oscillator: { type: "triangle" } }).toDestination(),
-        violin: new Tone.Synth({ oscillator: { type: "sawtooth" } }).toDestination(),
-        guitar: new Tone.Synth({ oscillator: { type: "square" } }).toDestination()
-      };
-      sampler = toneInstruments[instrument] || toneInstruments.piano;
-    }
+  async function playSargam() {
+    await Tone.start();
+    const sargam = document.getElementById('sargamInput').value.trim().split(/\s+/);
+    const lyrics = document.getElementById('lyricsInput').value.trim().split(/\s+/);
+    const bpm = parseInt(document.getElementById('tempo').value);
+    const beatDuration = 60 / bpm;
 
-    function changeInstrumentAndPlay() {
-      const instrument = document.getElementById('instrumentSelect').value;
-      createSampler(instrument);
-      setTimeout(playSargam, 300); // Automatically play after changing instrument
-    }
+    document.getElementById('lyricsDisplay').textContent = '';
+    document.getElementById('indian').textContent = sargam.join(' ');
 
-    changeInstrumentAndPlay();
+    sargam.forEach((note, i) => {
+      const time = `+${i * beatDuration}`;
+      const toneNote = noteMap[note];
+      if (toneNote) sampler.triggerAttackRelease(toneNote, beatDuration * 0.9, time);
+      setTimeout(() => {
+        document.getElementById('lyricsDisplay').textContent = lyrics[i] || '';
+      }, i * beatDuration * 1000);
+    });
+  }
 
-    async function playSargam() {
-      await Tone.start();
-      const sargam = document.getElementById('sargamInput').value.trim().split(/\s+/);
-      const lyrics = document.getElementById('lyricsInput').value.trim().split(/\s+/);
-      const bpm = parseInt(document.getElementById('tempo').value);
-      const beatDuration = 60 / bpm;
+  document.getElementById('instrumentSelect').addEventListener('change', changeInstrumentAndPlay);
+  createSampler('piano');
+};
+</script>
 
-      document.getElementById('lyricsDisplay').textContent = '';
-      document.getElementById('indian').textContent = sargam.join(' ');
-
-      sargam.forEach((note, i) => {
-        const time = `+${i * beatDuration}`;
-        const toneNote = noteMap[note];
-        if (toneNote) sampler.triggerAttackRelease(toneNote, beatDuration * 0.9, time);
-        setTimeout(() => {
-          document.getElementById('lyricsDisplay').textContent = lyrics[i] || '';
-        }, i * beatDuration * 1000);
-      });
-    }
-  </script>
 </body>
 </html>
