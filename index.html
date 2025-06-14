@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <title>Hindustani Sargam Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/tone@latest/build/Tone.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
     textarea, select, input, button { width: 100%; font-size: 1em; margin-top: 10px; }
     button { padding: 10px; }
     #staff { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
-    #indian { font-size: 1.2em; letter-spacing: 6px; margin-top: 10px; white-space: pre-wrap; }
+    #indian, #lyricsDisplay { font-size: 1.2em; letter-spacing: 6px; margin-top: 10px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -22,12 +23,16 @@
   </select>
 
   <textarea id="sargamInput" rows="4" placeholder="Enter Sargam: e.g. Sa Re Ga Ma Pa Dha Ni Sa'"></textarea>
+  <textarea id="lyricsInput" rows="4" placeholder="Enter Lyrics: e.g. mohe rang do laal"></textarea>
 
   <label for="tempo">Tempo (BPM):</label>
   <input type="number" id="tempo" value="80" min="40" max="240">
 
-  <button onclick="play()">▶️ Play</button>
+  <button onclick="playSargam()">▶️ Play</button>
+
+  <div id="lyricsDisplay"></div>
   <div id="indian"></div>
+
   <div id="staff">
     <canvas id="vfCanvas" width="700" height="200"></canvas>
   </div>
@@ -36,55 +41,50 @@
   <audio id="click" src="click.mp3"></audio>
 
   <script>
-const noteMap = {
-  'Sa.': 48, 'Re(k).': 49, 'Re.': 50, 'Ga(k).': 51, 'Ga.': 52, 'Ma.': 53, 'Ma(t).': 54, 'Pa.': 55, 'Dha(k).': 56, 'Dha.': 57, 'Ni(k).': 58, 'Ni.': 59,
-  'Sa': 60, 'Re(k)': 61, 'Re': 62, 'Ga(k)': 63, 'Ga': 64, 'Ma': 65, 'Ma(t)': 66, 'Pa': 67, 'Dha(k)': 68, 'Dha': 69, 'Ni(k)': 70, 'Ni': 71,
-  "Sa'": 72, "Re(k)'": 73, "Re'": 74, "Ga(k)'": 75, "Ga'": 76, "Ma'": 77, "Ma(t)'": 78, "Pa'": 79, "Dha(k)'": 80, "Dha'": 81, "Ni(k)'": 82, "Ni'": 83,
-  "Sa''": 84
-};
+    const noteMap = {
+      'Sa.': 'C3', 'Re(k).': 'C#3', 'Re.': 'D3', 'Ga(k).': 'D#3', 'Ga.': 'E3', 'Ma.': 'F3', 'Ma(t).': 'F#3',
+      'Pa.': 'G3', 'Dha(k).': 'G#3', 'Dha.': 'A3', 'Ni(k).': 'A#3', 'Ni.': 'B3',
+      'Sa': 'C4', 'Re(k)': 'C#4', 'Re': 'D4', 'Ga(k)': 'D#4', 'Ga': 'E4', 'Ma': 'F4', 'Ma(t)': 'F#4',
+      'Pa': 'G4', 'Dha(k)': 'G#4', 'Dha': 'A4', 'Ni(k)': 'A#4', 'Ni': 'B4',
+      "Sa'": 'C5', "Re(k)'": 'C#5', "Re'": 'D5', "Ga(k)'": 'D#5', "Ga'": 'E5', "Ma'": 'F5', "Ma(t)'": 'F#5',
+      "Pa'": 'G5', "Dha(k)'": 'G#5', "Dha'": 'A5', "Ni(k)'": 'A#5', "Ni'": 'B5', "Sa''": 'C6'
+    };
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const sampler = new Tone.Sampler({
+      urls: {
+        C3: "C3.mp3", D3: "D3.mp3", E3: "E3.mp3", F3: "F3.mp3", G3: "G3.mp3",
+        A3: "A3.mp3", B3: "B3.mp3", C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3",
+        G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3", C5: "C5.mp3", D5: "D5.mp3", E5: "E5.mp3"
+      },
+      release: 1,
+      baseUrl: "https://tonejs.github.io/audio/salamander/"
+    }).toDestination();
 
-function play() {
-  const sargamText = document.getElementById('sargamInput').value;
-  const bpm = parseInt(document.getElementById('tempo').value);
-  const beatDuration = 60 / bpm;
-  const tokens = sargamText.trim().split(/\s+/);
-  document.getElementById('indian').textContent = sargamText;
+    async function playSargam() {
+      await Tone.start();
+      const sargam = document.getElementById('sargamInput').value.trim().split(/\s+/);
+      const lyrics = document.getElementById('lyricsInput').value.trim().split(/\s+/);
+      const bpm = parseInt(document.getElementById('tempo').value);
+      const beatDuration = 60 / bpm;
 
-  const tanpura = document.getElementById('tanpura');
-  const click = document.getElementById('click');
-  tanpura.volume = 0.3;
-  tanpura.play();
+      document.getElementById('lyricsDisplay').textContent = '';
+      document.getElementById('indian').textContent = sargam.join(' ');
 
-  let currentTime = audioCtx.currentTime;
+      const tanpura = document.getElementById('tanpura');
+      tanpura.volume = 0.3;
+      tanpura.play();
 
-  tokens.forEach((token, i) => {
-    const midi = noteMap[token];
-    if (midi != null) {
-      const freq = 440 * Math.pow(2, (midi - 69) / 12);
-      scheduleNote(freq, currentTime);
+      sargam.forEach((note, i) => {
+        const time = `+${i * beatDuration}`;
+        const toneNote = noteMap[note];
+        if (toneNote) sampler.triggerAttackRelease(toneNote, beatDuration * 0.9, time);
+        setTimeout(() => {
+          document.getElementById('lyricsDisplay').textContent = lyrics[i] || '';
+        }, i * beatDuration * 1000);
+      });
+
+      setTimeout(() => tanpura.pause(), sargam.length * beatDuration * 1000);
     }
-    // Metronome
-    click.currentTime = 0;
-    click.play();
-    currentTime += beatDuration;
-  });
-
-  // Stop tanpura after playback
-  setTimeout(() => tanpura.pause(), tokens.length * beatDuration * 1000);
-}
-
-function scheduleNote(freq, time) {
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(freq, time);
-  gain.gain.setValueAtTime(0.4, time);
-  osc.connect(gain).connect(audioCtx.destination);
-  osc.start(time);
-  osc.stop(time + 0.45);
-}
   </script>
 </body>
 </html>
