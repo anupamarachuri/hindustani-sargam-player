@@ -3,19 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <title>Hindustani Sargam Player</title>
+  <link rel="icon" href="data:,">
   <script src="https://unpkg.com/tone"></script>
+  <script src="https://unpkg.com/vexflow/releases/vexflow-debug.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
-    textarea, select, input, button { width: 100%; font-size: 1em; margin-top: 10px; }
-    button { padding: 10px; }
-    #staff { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 20px; }
-    #indian, #lyricsDisplay { font-size: 1.2em; letter-spacing: 6px; margin-top: 10px; white-space: pre-wrap; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+      background: linear-gradient(to bottom right, #ffe066, #f4a261);
+      color: #5c2e00;
+    }
+    h2 {
+      text-align: center;
+      color: #b24c00;
+    }
+    textarea, select, input, button {
+      width: 100%;
+      font-size: 1em;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid #d89216;
+      border-radius: 6px;
+      background-color: #fff8e1;
+      color: #5c2e00;
+    }
+    button {
+      cursor: pointer;
+      background-color: #e65100;
+      color: white;
+      border: none;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #bf360c;
+    }
+    .button-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .control-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    .control-row label {
+      flex: 1;
+    }
+    .control-row input[type="range"] {
+      flex: 3;
+    }
+    .om-symbol {
+      font-size: 2em;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    #staff, #indianStaff {
+      margin-top: 20px;
+      background: #fff3cd;
+      padding: 20px;
+      border-radius: 8px;
+      border-top: 2px solid #d89216;
+    }
   </style>
 </head>
 <body>
-  <h2>Hindustani Sargam Player</h2>
+  <div class="om-symbol">🕉️</div>
+  <h2>🎶 Hindustani Sargam Player 🎶</h2>
 
-  <label for="raagSelect">Raag:</label>
+  <label for="raagSelect">Select Raag:</label>
   <select id="raagSelect">
     <option value="Yaman">Yaman</option>
     <option value="Bhupali">Bhupali</option>
@@ -23,102 +87,90 @@
   </select>
 
   <label for="instrumentSelect">Instrument:</label>
-  <select id="instrumentSelect" onchange="changeInstrumentAndPlay()">
+  <select id="instrumentSelect">
     <option value="piano">🎹 Piano</option>
     <option value="violin">🎻 Violin</option>
     <option value="guitar">🎸 Guitar</option>
   </select>
 
-  <textarea id="sargamInput" rows="4" placeholder="Enter Sargam: e.g. Sa Re Ga Ma Pa Dha Ni Sa'"></textarea>
-  <textarea id="lyricsInput" rows="4" placeholder="Enter Lyrics: e.g. mohe rang do laal"></textarea>
+  <label for="sargamInput">Enter Sargam Notes:</label>
+  <textarea id="sargamInput" rows="3" placeholder="e.g. Sa Re Ga Ma Pa Dha Ni Sa'" spellcheck="false"></textarea>
+
+  <label for="lyricsInput">Enter Corresponding Lyrics:</label>
+  <textarea id="lyricsInput" rows="2" placeholder="e.g. mohe rang do laal"></textarea>
 
   <label for="tempo">Tempo (BPM):</label>
   <input type="number" id="tempo" value="80" min="40" max="240">
 
-  <button onclick="playSargam()">▶️ Play</button>
+  <div class="control-row">
+    <label for="volumeControl">Instrument Volume:</label>
+    <input type="range" id="volumeControl" min="-60" max="0" value="-12">
+  </div>
 
-  <div id="lyricsDisplay"></div>
-  <div id="indian"></div>
+  <div class="control-row">
+    <label for="dronePitch">Tanpura Drone Pitch:</label>
+    <select id="dronePitch">
+      <option value="C3">C</option>
+      <option value="D3">D</option>
+      <option value="E3">E</option>
+      <option value="F3">F</option>
+      <option value="G3">G</option>
+      <option value="A3">A</option>
+      <option value="B3">B</option>
+    </select>
+  </div>
+
+  <div class="button-row">
+    <button onclick="playSargam()">▶️ Play</button>
+    <button onclick="startTanpura()">🎵 Start Tanpura</button>
+    <button onclick="stopTanpura()">🔇 Stop Tanpura</button>
+    <button onclick="startMicInput()">🎙 Start Mic Input</button>
+  </div>
 
   <div id="staff">
     <canvas id="vfCanvas" width="700" height="200"></canvas>
   </div>
 
-  <script>
-    const noteMap = {
-      'Sa.': 'C3', 'Re(k).': 'C#3', 'Re.': 'D3', 'Ga(k).': 'D#3', 'Ga.': 'E3', 'Ma.': 'F3', 'Ma(t).': 'F#3',
-      'Pa.': 'G3', 'Dha(k).': 'G#3', 'Dha.': 'A3', 'Ni(k).': 'A#3', 'Ni.': 'B3',
-      'Sa': 'C4', 'Re(k)': 'C#4', 'Re': 'D4', 'Ga(k)': 'D#4', 'Ga': 'E4', 'Ma': 'F4', 'Ma(t)': 'F#4',
-      'Pa': 'G4', 'Dha(k)': 'G#4', 'Dha': 'A4', 'Ni(k)': 'A#4', 'Ni': 'B4',
-      "Sa'": 'C5', "Re(k)'": 'C#5', "Re'": 'D5', "Ga(k)'": 'D#5', "Ga'": 'E5', "Ma'": 'F5', "Ma(t)'": 'F#5',
-      "Pa'": 'G5', "Dha(k)'": 'G#5', "Dha'": 'A5', "Ni(k)'": 'A#5', "Ni'": 'B5', "Sa''": 'C6'
-    };
+<script>
+const noteMap = {
+  'Sa': 'C4', 'Re': 'D4', 'Ga': 'E4', 'Ma': 'F4', 'Pa': 'G4', 'Dha': 'A4', 'Ni': 'B4',
+  "Sa'": 'C5', "Re'": 'D5', "Ga'": 'E5', "Ma'": 'F5', "Pa'": 'G5', "Dha'": 'A5', "Ni'": 'B5'
+};
 
-    let sampler;
-    let metronome;
+async function playSargam() {
+  await Tone.start();
+  const synth = new Tone.Synth().toDestination();
+  const notes = document.getElementById('sargamInput').value.trim().split(/\s+/);
+  const bpm = parseInt(document.getElementById('tempo').value);
+  let time = 0;
+  const beat = 60 / bpm;
 
-    async function createSampler(instrument) {
-      if (sampler) sampler.dispose();
+  notes.forEach((sargam, i) => {
+    const note = noteMap[sargam] || 'C4';
+    synth.triggerAttackRelease(note, '8n', Tone.now() + time);
+    time += beat;
+  });
+}
 
-      if (instrument === 'piano') {
-        sampler = new Tone.Sampler({
-          urls: { C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3", G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3" },
-          baseUrl: "https://tonejs.github.io/audio/salamander/",
-        }).toDestination();
-      } else {
-        const oscillatorType = instrument === 'violin' ? 'sawtooth' : 'square';
-        sampler = new Tone.Synth({ oscillator: { type: oscillatorType } }).toDestination();
-      }
+let tanpura;
+function startTanpura() {
+  const pitch = document.getElementById('dronePitch').value;
+  tanpura = new Tone.Oscillator(pitch, 'sine').toDestination();
+  tanpura.volume.value = -20;
+  tanpura.start();
+}
+function stopTanpura() {
+  if (tanpura) tanpura.stop();
+}
 
-      await Tone.loaded();
-    }
-
-    async function changeInstrumentAndPlay() {
-      const instrument = document.getElementById('instrumentSelect').value;
-      await createSampler(instrument);
-      setTimeout(playSargam, 300);
-    }
-
-    changeInstrumentAndPlay();
-
-    async function playSargam() {
-      await Tone.start();
-      const sargam = document.getElementById('sargamInput').value.trim().split(/\s+/);
-      const lyrics = document.getElementById('lyricsInput').value.trim().split(/\s+/);
-      const bpm = parseInt(document.getElementById('tempo').value);
-      const beatDuration = 60 / bpm;
-
-      document.getElementById('lyricsDisplay').textContent = '';
-      document.getElementById('indian').textContent = sargam.join(' ');
-
-      if (metronome) {
-        metronome.dispose();
-      }
-      metronome = new Tone.MembraneSynth().toDestination();
-
-      Tone.Transport.cancel();
-      Tone.Transport.bpm.value = bpm;
-
-      for (let i = 0; i < sargam.length; i++) {
-        const toneNote = noteMap[sargam[i]];
-        const currentTime = i * beatDuration;
-
-        if (toneNote) {
-          Tone.Transport.schedule(time => {
-            sampler.triggerAttackRelease(toneNote, beatDuration * 0.9, time);
-          }, currentTime);
-        }
-
-        Tone.Transport.schedule(time => {
-          metronome.triggerAttackRelease("C2", "8n", time);
-          setTimeout(() => {
-            document.getElementById('lyricsDisplay').textContent = lyrics[i] || '';
-          }, 0);
-        }, currentTime);
-      }
-
-      Tone.Transport.start();
-    }
-  </script>
+function startMicInput() {
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    const audioContext = Tone.context;
+    const mic = audioContext.createMediaStreamSource(stream);
+    mic.connect(Tone.Destination);
+    alert("Mic started (this demo doesn't process pitch yet).");
+  });
+}
+</script>
 </body>
 </html>
