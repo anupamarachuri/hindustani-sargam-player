@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hindustani Sargam Player</title>
+  <script src="https://unpkg.com/vexflow/releases/vexflow-min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: auto; }
+    textarea, select, input, button { width: 100%; margin-top: 10px; font-size: 1em; }
+    #staff { border: 1px solid #ccc; padding: 10px; margin-top: 20px; }
+    #indian { font-size: 1.2em; letter-spacing: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Hindustani Sargam Player</h2>
+  <label>Raag:
+    <select id="raagSelect"></select>
+  </label>
+  <textarea id="sargamInput" rows="4" placeholder="e.g. Sa Re Ga Ma Pa Dha Ni Sa'"></textarea>
+  <label>Tempo (BPM): <input type="number" id="tempo" value="80" min="40" max="240"></label>
+  <button onclick="play()">▶️ Play</button>
+  <button onclick="drawNotation()">📄 Show Staff</button>
+  
+  <div id="indian"></div>
+  <div id="staff"><canvas id="vfCanvas"></canvas></div>
+  <audio id="tanpura" loop src="https://.../tanpura_c.mp3"></audio>
+  <audio id="click" src="https://.../metronome_click.mp3"></audio>
+  
+  <script src="main.js"></script>
+</body>
+</html>
