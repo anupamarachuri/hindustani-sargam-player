@@ -22,9 +22,48 @@ function init() {
 }
 window.onload = init;
 
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
 function play() {
-  // Similar logic: play tanpura, metronome beats, and convert Sargam to frequencies + schedule playback
-  // Uses Web Audio API for piano-like tones
+  const sargamText = document.getElementById('sargamInput').value;
+  const bpm = parseInt(document.getElementById('tempo').value);
+  const beatDuration = 60 / bpm;
+  const tokens = sargamText.trim().split(/\s+/);
+
+  const tanpura = document.getElementById('tanpura');
+  const click = document.getElementById('click');
+  tanpura.volume = 0.3;
+  tanpura.play();
+
+  let currentTime = audioCtx.currentTime;
+
+  tokens.forEach((token, i) => {
+    const midi = noteMap[token];
+    if (midi != null) {
+      const freq = 440 * Math.pow(2, (midi - 69) / 12);
+      scheduleNote(freq, currentTime);
+    }
+
+    // Metronome click every beat
+    click.currentTime = 0;
+    click.play();
+
+    currentTime += beatDuration;
+  });
+
+  // Stop tanpura after playback (optional)
+  setTimeout(() => tanpura.pause(), tokens.length * beatDuration * 1000);
+}
+
+function scheduleNote(freq, time) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, time);
+  gain.gain.setValueAtTime(0.4, time);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(time);
+  osc.stop(time + 0.45);
 }
 
 function drawNotation() {
